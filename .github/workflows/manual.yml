@@ -1,0 +1,42 @@
+name: Kütüb-i Sitte Veritabanı Çekici
+
+on:
+  schedule:
+    # Her hafta Pazar gecesi otomatik çalışarak güncellemeleri kontrol eder
+    - cron: '0 0 * * 0' 
+  workflow_dispatch: # GitHub üzerinden butona basarak manuel tetikleme imkanı
+
+permissions:
+  contents: write # Oluşturulan JSON dosyalarını repoya yazma izni
+
+jobs:
+  scrape-and-save:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Depoyu Klonla (Checkout)
+      uses: actions/checkout@v3
+
+    - name: Python Ortamını Kur
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Gerekli Kütüphaneleri Yükle
+      run: |
+        python -m pip install --upgrade pip
+        pip install requests beautifulsoup4
+
+    - name: Veri Çekme Scriptini Çalıştır
+      run: python scraper.py
+
+    - name: Verileri Repoya Kaydet ve Pushla
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action Bot"
+        
+        # Sadece data klasöründeki değişiklikleri ekle
+        git add data/*.json
+        
+        # Eğer yeni veri çekilmiş veya güncellenmişse commit at, değişiklik yoksa atla
+        git diff --quiet && git diff --staged --quiet || (git commit -m "Otomatik Güncelleme: Hadis veritabanı çekildi ve gruplandı" && git push)
